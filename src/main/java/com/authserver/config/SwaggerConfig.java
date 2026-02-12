@@ -14,12 +14,21 @@ import java.util.List;
 @Configuration
 public class SwaggerConfig {
 
+    @Value("${app.server-url:}")
+    private String serverUrl;
+
     @Bean
     public OpenAPI authServerOpenAPI() {
-        return new OpenAPI()
+        OpenAPI openAPI = new OpenAPI()
                 .info(new Info()
                         .title("Auth Server API")
                         .description("Spring Boot 기반 인증 서버 REST API 문서")
                         .version("v1.0.0"));
+
+        if (!serverUrl.isEmpty()) {
+            openAPI.addServersItem(new Server().url(serverUrl));
+        }
+
+        return openAPI;
     }
 }
