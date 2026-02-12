@@ -26,7 +26,7 @@ import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
 @RestController
-@RequestMapping("/api")
+@RequestMapping()
 @RequiredArgsConstructor
 @Tag(name = "인증 API", description = "회원가입, 로그인, 로그아웃 등 인증 관련 API")
 public class AuthController {

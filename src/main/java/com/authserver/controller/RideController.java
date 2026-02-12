@@ -18,7 +18,7 @@ import com.authserver.dto.queue.*;
 import java.util.List;
 
 @RestController
-@RequestMapping("/api/rides")
+@RequestMapping("/rides")
 @RequiredArgsConstructor
 @Tag(name = "놀이기구 API", description = "놀이기구 관리 및 대기열 관련 API")
 public class RideController {

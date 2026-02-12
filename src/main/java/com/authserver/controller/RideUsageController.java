@@ -16,9 +16,9 @@ import com.authserver.service.RideUsageService;
 import java.util.List;
 
 @RestController
-@RequestMapping("/api/ride-usages")
+@RequestMapping("/ride-usages")
 @RequiredArgsConstructor
-@Tag(name = "놀이기구 이용 기록 API", description = "놀이기구 이용 기록 관리 API")
+@Tag(name = "놀이기구 이용 기록 API", description = "놀이기구 이용 기록 관련 API")
 public class RideUsageController {
 
     private final RideUsageService rideUsageService;

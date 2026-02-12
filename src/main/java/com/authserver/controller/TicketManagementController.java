@@ -16,9 +16,9 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 @RestController
-@RequestMapping("/api/ticket-management")
+@RequestMapping("/ticket-management")
 @RequiredArgsConstructor
-@Tag(name = "티켓 재고 관리 API", description = "티켓 재고 관리 관련 API")
+@Tag(name = "티켓 관리 API", description = "티켓 구매 및 사용 관련 API")
 public class TicketManagementController {
 
     private final TicketManagementService ticketManagementService;

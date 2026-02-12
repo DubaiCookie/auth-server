@@ -16,7 +16,7 @@ import com.authserver.service.TicketService;
 import java.util.List;
 
 @RestController
-@RequestMapping("/api/tickets/products")
+@RequestMapping("/tickets/products")
 @RequiredArgsConstructor
 @Tag(name = "티켓 상품 API", description = "티켓 상품 관리 관련 API")
 public class TicketProductController {

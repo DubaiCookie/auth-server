@@ -24,7 +24,7 @@ import org.springframework.web.bind.annotation.*;
  * 클라이언트의 대기열 요청을 받아 대기열 서버로 전달하는 컨트롤러
  */
 @RestController
-@RequestMapping("/api/queue")
+@RequestMapping("/queue")
 @RequiredArgsConstructor
 @Tag(
         name = "클라이언트 대기열 API",
