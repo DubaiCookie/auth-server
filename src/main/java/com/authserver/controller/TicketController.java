@@ -100,6 +100,30 @@ public class TicketController {
     }
 
     /**
+     * PATCH /api/tickets/{ticketOrderId}/activate - 티켓 활성화
+     */
+    @Operation(summary = "티켓 활성화", description = "티켓 주문을 활성화 상태로 변경합니다.")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "활성화 성공"),
+            @ApiResponse(responseCode = "404", description = "티켓 주문을 찾을 수 없음"),
+            @ApiResponse(responseCode = "500", description = "서버 오류")
+    })
+    @PatchMapping("/{ticketOrderId}/activate")
+    public ResponseEntity<TicketOrder> activateTicketOrder(
+            @Parameter(description = "티켓 주문 ID", required = true)
+            @PathVariable Long ticketOrderId) {
+        try {
+            TicketOrder ticketOrder = ticketOrderService.updateTicketOrderStatus(ticketOrderId, ActiveStatus.ACTIVE);
+            return ResponseEntity.ok(ticketOrder);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.notFound().build();
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+
+    /**
      * PATCH /api/tickets/{ticketOrderId}/status - 티켓 주문 상태 변경
      */
     @Operation(summary = "티켓 주문 상태 변경", description = "티켓 주문의 상태를 변경합니다.")

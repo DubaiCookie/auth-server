@@ -32,17 +32,17 @@ public interface TicketOrderRepository extends JpaRepository<TicketOrder, Long> 
     List<TicketOrder> findByTicketManagementId(Long ticketManagementId);
 
     /**
-     * 사용자 ID로 오늘 이후 주문 조회
+     * 사용자 ID로 오늘 이후 주문 조회 (availableAt 오름차순)
      */
     @Query("SELECT to FROM TicketOrder to JOIN TicketManagement tm ON to.ticketManagementId = tm.ticketManagementId " +
-           "WHERE to.userId = :userId AND tm.availableAt >= :today")
+           "WHERE to.userId = :userId AND tm.availableAt >= :today ORDER BY tm.availableAt ASC")
     List<TicketOrder> findByUserIdAndAvailableAtAfterToday(@Param("userId") Long userId, @Param("today") LocalDateTime today);
 
     /**
-     * 사용자 ID와 활성 상태로 오늘 이후 주문 조회
+     * 사용자 ID와 활성 상태로 오늘 이후 주문 조회 (availableAt 오름차순)
      */
     @Query("SELECT to FROM TicketOrder to JOIN TicketManagement tm ON to.ticketManagementId = tm.ticketManagementId " +
-           "WHERE to.userId = :userId AND to.activeStatus = :activeStatus AND tm.availableAt >= :today")
+           "WHERE to.userId = :userId AND to.activeStatus = :activeStatus AND tm.availableAt >= :today ORDER BY tm.availableAt ASC")
     List<TicketOrder> findByUserIdAndActiveStatusAndAvailableAtAfterToday(
         @Param("userId") Long userId,
         @Param("activeStatus") ActiveStatus activeStatus,
