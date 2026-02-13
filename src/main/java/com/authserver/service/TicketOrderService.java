@@ -3,6 +3,7 @@ package com.authserver.service;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import com.authserver.dto.TicketOrderResponseDto;
 import com.authserver.entity.TicketOrder;
 import com.authserver.entity.ActiveStatus;
 import com.authserver.entity.Ticket;
@@ -14,6 +15,7 @@ import com.authserver.repository.TicketManagementRepository;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.stream.Collectors;
 
 /**
  * 티켓 주문 내역 관리 Service
@@ -118,5 +120,51 @@ public class TicketOrderService {
     @Transactional
     public void deleteTicketOrder(Long ticketOrderId) {
         ticketOrderRepository.deleteById(ticketOrderId);
+    }
+
+    /**
+     * TicketOrder를 TicketOrderResponseDto로 변환
+     */
+    private TicketOrderResponseDto convertToResponseDto(TicketOrder ticketOrder) {
+        // TicketManagement 조회
+        TicketManagement ticketManagement = ticketManagementRepository.findById(ticketOrder.getTicketManagementId())
+            .orElseThrow(() -> new IllegalArgumentException("TicketManagement not found"));
+
+        // Ticket 조회
+        Ticket ticket = ticketRepository.findById(ticketManagement.getTicketId())
+            .orElseThrow(() -> new IllegalArgumentException("Ticket not found"));
+
+        return TicketOrderResponseDto.builder()
+            .ticketOrderId(ticketOrder.getTicketOrderId())
+            .userId(ticketOrder.getUserId())
+            .availableAt(ticketManagement.getAvailableAt())
+            .ticketType(ticket.getTicketType())
+            .paymentDate(ticketOrder.getPaymentDate())
+            .activeStatus(ticketOrder.getActiveStatus())
+            .build();
+    }
+
+    /**
+     * 사용자의 오늘 이후 주문 조회 (DTO 반환)
+     */
+    @Transactional(readOnly = true)
+    public List<TicketOrderResponseDto> getUserTicketOrdersDto(Long userId) {
+        LocalDateTime today = LocalDateTime.now().withHour(0).withMinute(0).withSecond(0).withNano(0);
+        List<TicketOrder> ticketOrders = ticketOrderRepository.findByUserIdAndAvailableAtAfterToday(userId, today);
+        return ticketOrders.stream()
+            .map(this::convertToResponseDto)
+            .collect(Collectors.toList());
+    }
+
+    /**
+     * 사용자의 활성 상태이면서 오늘 이후 주문 조회 (DTO 반환)
+     */
+    @Transactional(readOnly = true)
+    public List<TicketOrderResponseDto> getUserActiveTicketOrdersDto(Long userId) {
+        LocalDateTime today = LocalDateTime.now().withHour(0).withMinute(0).withSecond(0).withNano(0);
+        List<TicketOrder> ticketOrders = ticketOrderRepository.findByUserIdAndActiveStatusAndAvailableAtAfterToday(userId, ActiveStatus.ACTIVE, today);
+        return ticketOrders.stream()
+            .map(this::convertToResponseDto)
+            .collect(Collectors.toList());
     }
 }

@@ -9,6 +9,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import com.authserver.dto.TicketOrderResponseDto;
 import com.authserver.entity.TicketOrder;
 import com.authserver.entity.ActiveStatus;
 import com.authserver.entity.TicketType;
@@ -40,7 +41,7 @@ public class TicketController {
             jakarta.servlet.http.HttpServletRequest request,
             @Parameter(description = "이용 날짜 (ISO 8601)", required = true, example = "2026-02-20T10:00:00")
             @RequestParam String availableAt,
-            @Parameter(description = "티켓 타입", required = true, example = "DAY_PASS")
+            @Parameter(description = "티켓 타입 (GENERAL 또는 PREMIUM)", required = true, example = "GENERAL")
             @RequestParam TicketType ticketType) {
         try {
             Long authenticatedUserId = (Long) request.getAttribute("authenticatedUserId");
@@ -66,10 +67,10 @@ public class TicketController {
             @ApiResponse(responseCode = "500", description = "서버 오류")
     })
     @GetMapping("/my")
-    public ResponseEntity<List<TicketOrder>> getMyTicketOrders(jakarta.servlet.http.HttpServletRequest request) {
+    public ResponseEntity<List<TicketOrderResponseDto>> getMyTicketOrders(jakarta.servlet.http.HttpServletRequest request) {
         try {
             Long authenticatedUserId = (Long) request.getAttribute("authenticatedUserId");
-            List<TicketOrder> ticketOrders = ticketOrderService.getUserTicketOrders(authenticatedUserId);
+            List<TicketOrderResponseDto> ticketOrders = ticketOrderService.getUserTicketOrdersDto(authenticatedUserId);
             return ResponseEntity.ok(ticketOrders);
         } catch (Exception e) {
             e.printStackTrace();
@@ -87,10 +88,10 @@ public class TicketController {
             @ApiResponse(responseCode = "500", description = "서버 오류")
     })
     @GetMapping("/my/active")
-    public ResponseEntity<List<TicketOrder>> getMyActiveTicketOrders(jakarta.servlet.http.HttpServletRequest request) {
+    public ResponseEntity<List<TicketOrderResponseDto>> getMyActiveTicketOrders(jakarta.servlet.http.HttpServletRequest request) {
         try {
             Long authenticatedUserId = (Long) request.getAttribute("authenticatedUserId");
-            List<TicketOrder> ticketOrders = ticketOrderService.getUserActiveTicketOrders(authenticatedUserId);
+            List<TicketOrderResponseDto> ticketOrders = ticketOrderService.getUserActiveTicketOrdersDto(authenticatedUserId);
             return ResponseEntity.ok(ticketOrders);
         } catch (Exception e) {
             e.printStackTrace();
