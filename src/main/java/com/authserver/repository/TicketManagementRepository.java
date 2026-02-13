@@ -27,4 +27,14 @@ public interface TicketManagementRepository extends JpaRepository<TicketManageme
      * 재고가 있는 티켓 조회
      */
     List<TicketManagement> findByStockGreaterThan(Integer stock);
+
+    /**
+     * 특정 날짜 이후의 모든 재고 조회
+     */
+    List<TicketManagement> findByAvailableAtGreaterThanEqual(LocalDateTime dateTime);
+
+    /**
+     * 티켓 ID와 이용 날짜로 재고 조회
+     */
+    List<TicketManagement> findByTicketIdAndAvailableAt(Long ticketId, LocalDateTime availableAt);
 }

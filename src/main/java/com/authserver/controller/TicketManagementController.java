@@ -52,63 +52,17 @@ public class TicketManagementController {
     }
 
     /**
-     * GET /api/ticket-management/{ticketManagementId} - 특정 티켓 재고 조회
+     * GET /api/ticket-management - 오늘 포함 이후 모든 티켓 재고 조회
      */
-    @Operation(summary = "티켓 재고 조회", description = "ID로 특정 티켓 재고를 조회합니다.")
-    @ApiResponses(value = {
-            @ApiResponse(responseCode = "200", description = "조회 성공"),
-            @ApiResponse(responseCode = "404", description = "티켓 재고를 찾을 수 없음"),
-            @ApiResponse(responseCode = "500", description = "서버 오류")
-    })
-    @GetMapping("/{ticketManagementId}")
-    public ResponseEntity<TicketManagement> getTicketManagement(
-            @Parameter(description = "티켓 재고 ID", required = true)
-            @PathVariable Long ticketManagementId) {
-        try {
-            TicketManagement ticketManagement = ticketManagementService.getTicketManagement(ticketManagementId);
-            return ResponseEntity.ok(ticketManagement);
-        } catch (IllegalArgumentException e) {
-            return ResponseEntity.notFound().build();
-        } catch (Exception e) {
-            e.printStackTrace();
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
-        }
-    }
-
-    /**
-     * GET /api/ticket-management - 모든 티켓 재고 조회
-     */
-    @Operation(summary = "전체 티켓 재고 조회", description = "등록된 모든 티켓 재고를 조회합니다.")
+    @Operation(summary = "오늘 이후 티켓 재고 조회", description = "오늘 날짜 포함 이후의 모든 티켓 재고를 조회합니다.")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "조회 성공"),
             @ApiResponse(responseCode = "500", description = "서버 오류")
     })
     @GetMapping
-    public ResponseEntity<List<TicketManagement>> getAllTicketManagements() {
+    public ResponseEntity<List<TicketManagement>> getAllTicketManagementsFromToday() {
         try {
-            List<TicketManagement> ticketManagements = ticketManagementService.getAllTicketManagements();
-            return ResponseEntity.ok(ticketManagements);
-        } catch (Exception e) {
-            e.printStackTrace();
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
-        }
-    }
-
-    /**
-     * GET /api/ticket-management/ticket/{ticketId} - 특정 티켓의 재고 조회
-     */
-    @Operation(summary = "특정 티켓의 재고 조회", description = "티켓 ID로 재고를 조회합니다.")
-    @ApiResponses(value = {
-            @ApiResponse(responseCode = "200", description = "조회 성공"),
-            @ApiResponse(responseCode = "500", description = "서버 오류")
-    })
-    @GetMapping("/ticket/{ticketId}")
-    public ResponseEntity<List<TicketManagement>> getTicketManagementsByTicketId(
-            @Parameter(description = "티켓 ID", required = true)
-            @PathVariable Long ticketId) {
-        try {
-            List<TicketManagement> ticketManagements = 
-                    ticketManagementService.getTicketManagementsByTicketId(ticketId);
+            List<TicketManagement> ticketManagements = ticketManagementService.getAllTicketManagementsFromToday();
             return ResponseEntity.ok(ticketManagements);
         } catch (Exception e) {
             e.printStackTrace();

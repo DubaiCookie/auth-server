@@ -93,4 +93,13 @@ public class TicketManagementService {
     public void deleteTicketManagement(Long ticketManagementId) {
         ticketManagementRepository.deleteById(ticketManagementId);
     }
+
+    /**
+     * 오늘 포함 이후 모든 티켓 재고 조회
+     */
+    @Transactional(readOnly = true)
+    public List<TicketManagement> getAllTicketManagementsFromToday() {
+        LocalDateTime today = LocalDateTime.now().withHour(0).withMinute(0).withSecond(0).withNano(0);
+        return ticketManagementRepository.findByAvailableAtGreaterThanEqual(today);
+    }
 }
