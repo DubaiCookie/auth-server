@@ -121,5 +121,35 @@ public class QueueClientService {
             throw new RuntimeException("대기열 서버 통신 오류: " + e.getMessage(), e);
         }
     }
+
+    /**
+     * 특정 놀이기구의 대기열 정보 조회
+     *
+     * @param rideId 놀이기구 ID
+     * @return 놀이기구 대기열 정보
+     */
+    public com.authserver.dto.queue.RideQueueInfoDto getRideQueueInfo(Long rideId) {
+        logger.info("대기열 서버로 특정 놀이기구 대기열 정보 조회 요청 - 놀이기구={}", rideId);
+
+        try {
+            com.authserver.dto.queue.RideQueueInfoDto response = queueWebClient.get()
+                    .uri("/api/queue/rides/{rideId}/info", rideId)
+                    .retrieve()
+                    .bodyToMono(com.authserver.dto.queue.RideQueueInfoDto.class)
+                    .timeout(Duration.ofSeconds(TIMEOUT_SECONDS))
+                    .block();
+
+            if (response == null) {
+                throw new RuntimeException("대기열 서버로부터 응답을 받지 못했습니다.");
+            }
+
+            logger.info("대기열 서버 응답 - 놀이기구={}, 대기열타입수={}", rideId, response.waitTimes().size());
+
+            return response;
+        } catch (Exception e) {
+            logger.error("특정 놀이기구 대기열 정보 조회 중 오류 발생 - 놀이기구={}", rideId, e);
+            throw new RuntimeException("대기열 서버 통신 오류: " + e.getMessage(), e);
+        }
+    }
 }
 

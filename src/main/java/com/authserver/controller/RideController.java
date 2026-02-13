@@ -69,25 +69,26 @@ public class RideController {
     }
 
     /**
-     * GET /api/rides/{rideId} - 특정 놀이기구 조회
+     * GET /rides/{rideId} - 특정 놀이기구 조회 (대기열 정보 포함)
      */
-    @Operation(summary = "놀이기구 조회", description = "ID로 특정 놀이기구를 조회합니다.")
+    @Operation(summary = "놀이기구 상세 조회", description = "ID로 특정 놀이기구를 조회합니다. 대기열 정보(대기 시간, 대기 인원)를 포함합니다.")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "조회 성공"),
             @ApiResponse(responseCode = "404", description = "놀이기구를 찾을 수 없음"),
             @ApiResponse(responseCode = "500", description = "서버 오류")
     })
     @GetMapping("/{rideId}")
-    public ResponseEntity<Ride> getRide(
+    public ResponseEntity<RideDetailDto> getRide(
             @Parameter(description = "놀이기구 ID", required = true)
             @PathVariable Long rideId) {
         try {
-            Ride ride = rideService.getRide(rideId);
-            return ResponseEntity.ok(ride);
+            RideDetailDto rideDetail = rideService.getRideWithQueueInfo(rideId);
+            return ResponseEntity.ok(rideDetail);
         } catch (IllegalArgumentException e) {
+            logger.error("놀이기구를 찾을 수 없음 - rideId={}", rideId);
             return ResponseEntity.notFound().build();
         } catch (Exception e) {
-            e.printStackTrace();
+            logger.error("놀이기구 조회 중 오류 발생 - rideId={}", rideId, e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
     }

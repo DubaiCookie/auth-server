@@ -1,6 +1,8 @@
 package com.authserver.service;
 
 import lombok.RequiredArgsConstructor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import com.authserver.entity.Ride;
@@ -16,6 +18,7 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class RideService {
 
+    private static final Logger logger = LoggerFactory.getLogger(RideService.class);
     private final RideRepository rideRepository;
     private final QueueClientService queueClientService;
 
@@ -49,6 +52,29 @@ public class RideService {
     public Ride getRide(Long rideId) {
         return rideRepository.findById(rideId)
                 .orElseThrow(() -> new IllegalArgumentException("Ride not found"));
+    }
+
+    /**
+     * 특정 놀이기구 조회 (대기열 정보 포함)
+     */
+    @Transactional(readOnly = true)
+    public RideDetailDto getRideWithQueueInfo(Long rideId) {
+        logger.info("놀이기구 상세 조회 (대기열 정보 포함) - rideId={}", rideId);
+
+        // 1. 놀이기구 정보 조회
+        Ride ride = getRide(rideId);
+
+        // 2. 대기열 서버에서 해당 놀이기구의 대기열 정보 조회
+        try {
+            RideQueueInfoDto queueInfo = queueClientService.getRideQueueInfo(rideId);
+            logger.info("대기열 정보 조회 성공 - rideId={}, waitTimes={}", rideId, queueInfo.waitTimes().size());
+
+            return RideDetailDto.from(ride, queueInfo.waitTimes());
+        } catch (Exception e) {
+            logger.error("대기열 정보 조회 실패 - rideId={}", rideId, e);
+            // 대기열 정보 조회 실패 시 빈 리스트 반환
+            return RideDetailDto.from(ride, List.of());
+        }
     }
 
     /**
