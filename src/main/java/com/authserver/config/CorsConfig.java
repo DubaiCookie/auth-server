@@ -1,5 +1,6 @@
 package com.authserver.config;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.cors.CorsConfiguration;
@@ -8,6 +9,9 @@ import org.springframework.web.filter.CorsFilter;
 
 @Configuration
 public class CorsConfig {
+
+    @Value("${cors.server-origin}")
+    private String serverOrigin;
 
     @Bean
     public CorsFilter corsFilter() {
@@ -19,6 +23,7 @@ public class CorsConfig {
         // 허용할 도메인 지정
         config.addAllowedOrigin("http://localhost:8080"); // 로컬 백엔드
         config.addAllowedOrigin("http://localhost:3001"); // 로컬 프론트엔드
+        config.addAllowedOrigin(serverOrigin);
 
         config.addAllowedHeader("*"); // 모든 헤더 허용
         config.addAllowedMethod("*"); // 모든 HTTP 메서드 허용 (GET, POST, PUT, DELETE 등)

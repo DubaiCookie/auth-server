@@ -25,15 +25,14 @@ public class FilterConfig {
         registrationBean.setFilter(new JwtAuthenticationFilter(jwtUtil));
 
         // 필터 적용 URL 패턴 (인증 필요)
-        // Note: /* matches single level, /** is not standard servlet pattern but Spring supports it
-        registrationBean.addUrlPatterns("/api/tickets/*");
-        registrationBean.addUrlPatterns("/api/tickets/products/*");
-        registrationBean.addUrlPatterns("/api/ticket-management/*");
-        registrationBean.addUrlPatterns("/api/rides/*");
-        registrationBean.addUrlPatterns("/api/ride-usages/*");
-        registrationBean.addUrlPatterns("/api/logout");
+        // 공개 엔드포인트: /login, /signup, /refresh, /swagger-ui/*, /v3/api-docs/*
+        registrationBean.addUrlPatterns("/tickets/*");
+        registrationBean.addUrlPatterns("/tickets/products/*");
+        registrationBean.addUrlPatterns("/ticket-management/*");
+        registrationBean.addUrlPatterns("/queue/*");  // 대기열 관련은 인증 필요
+        registrationBean.addUrlPatterns("/ride-usages/*");
+        registrationBean.addUrlPatterns("/logout");
         registrationBean.addUrlPatterns("/home");
-        // NOTE: /api/refresh is excluded because it needs to work with expired Access Tokens
 
         // 필터 순서 설정 (낮을수록 먼저 실행)
         registrationBean.setOrder(1);
