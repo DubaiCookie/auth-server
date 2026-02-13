@@ -9,6 +9,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import com.authserver.dto.TicketManagementResponseDto;
 import com.authserver.entity.TicketManagement;
 import com.authserver.service.TicketManagementService;
 
@@ -54,15 +55,15 @@ public class TicketManagementController {
     /**
      * GET /api/ticket-management - 오늘 포함 이후 모든 티켓 재고 조회
      */
-    @Operation(summary = "오늘 이후 티켓 재고 조회", description = "오늘 날짜 포함 이후의 모든 티켓 재고를 조회합니다.")
+    @Operation(summary = "오늘 이후 티켓 재고 조회", description = "오늘 날짜 포함 이후의 모든 티켓 재고를 조회합니다. ticketType 포함.")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "조회 성공"),
             @ApiResponse(responseCode = "500", description = "서버 오류")
     })
     @GetMapping
-    public ResponseEntity<List<TicketManagement>> getAllTicketManagementsFromToday() {
+    public ResponseEntity<List<TicketManagementResponseDto>> getAllTicketManagementsFromToday() {
         try {
-            List<TicketManagement> ticketManagements = ticketManagementService.getAllTicketManagementsFromToday();
+            List<TicketManagementResponseDto> ticketManagements = ticketManagementService.getAllTicketManagementsFromTodayDto();
             return ResponseEntity.ok(ticketManagements);
         } catch (Exception e) {
             e.printStackTrace();
@@ -73,19 +74,19 @@ public class TicketManagementController {
     /**
      * GET /api/ticket-management/available - 판매 가능한 티켓 재고 조회
      */
-    @Operation(summary = "판매 가능한 티켓 재고 조회", description = "특정 날짜 이후 판매 가능한 티켓 재고를 조회합니다.")
+    @Operation(summary = "판매 가능한 티켓 재고 조회", description = "특정 날짜 이후 판매 가능한 티켓 재고를 조회합니다. ticketType 포함.")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "조회 성공"),
             @ApiResponse(responseCode = "500", description = "서버 오류")
     })
     @GetMapping("/available")
-    public ResponseEntity<List<TicketManagement>> getAvailableTicketManagements(
+    public ResponseEntity<List<TicketManagementResponseDto>> getAvailableTicketManagements(
             @Parameter(description = "조회 시작 일시 (ISO 8601)", required = true, example = "2026-02-20T10:00:00")
             @RequestParam String dateTime) {
         try {
             LocalDateTime dateTimeParam = LocalDateTime.parse(dateTime);
-            List<TicketManagement> ticketManagements = 
-                    ticketManagementService.getAvailableTicketManagements(dateTimeParam);
+            List<TicketManagementResponseDto> ticketManagements =
+                    ticketManagementService.getAvailableTicketManagementsDto(dateTimeParam);
             return ResponseEntity.ok(ticketManagements);
         } catch (Exception e) {
             e.printStackTrace();
@@ -96,18 +97,18 @@ public class TicketManagementController {
     /**
      * GET /api/ticket-management/in-stock - 재고가 있는 티켓 조회
      */
-    @Operation(summary = "재고가 있는 티켓 조회", description = "최소 재고량 이상인 티켓을 조회합니다.")
+    @Operation(summary = "재고가 있는 티켓 조회", description = "최소 재고량 이상인 티켓을 조회합니다. ticketType 포함.")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "조회 성공"),
             @ApiResponse(responseCode = "500", description = "서버 오류")
     })
     @GetMapping("/in-stock")
-    public ResponseEntity<List<TicketManagement>> getInStockTicketManagements(
+    public ResponseEntity<List<TicketManagementResponseDto>> getInStockTicketManagements(
             @Parameter(description = "최소 재고량", required = false, example = "0")
             @RequestParam(defaultValue = "0") Integer minStock) {
         try {
-            List<TicketManagement> ticketManagements = 
-                    ticketManagementService.getInStockTicketManagements(minStock);
+            List<TicketManagementResponseDto> ticketManagements =
+                    ticketManagementService.getInStockTicketManagementsDto(minStock);
             return ResponseEntity.ok(ticketManagements);
         } catch (Exception e) {
             e.printStackTrace();
