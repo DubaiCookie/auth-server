@@ -4,6 +4,7 @@ import com.authserver.dto.queue.EnqueueRequest;
 import com.authserver.dto.queue.EnqueueResponse;
 import com.authserver.dto.queue.QueueStatusListResponse;
 import com.authserver.dto.queue.RideQueueInfoListResponse;
+import com.authserver.entity.TicketOrder;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -23,18 +24,105 @@ public class QueueClientService {
     private static final int TIMEOUT_SECONDS = 10;
 
     private final WebClient queueWebClient;
+    private final TicketOrderService ticketOrderService;
+    private final RideUsageService rideUsageService;
 
     /**
-     * 대기열 등록 요청을 대기열 서버로 전달
+     * 대기열 등록 요청을 검증하고 대기열 서버로 전달
+     *
+     * 비즈니스 로직:
+     * 1. 인증된 사용자 ID와 요청의 userId가 일치하는지 확인 (보안)
+     * 2. 사용자의 오늘 날짜 활성 티켓 찾기 (ACTIVE 상태 + available_at이 오늘)
+     * 3. 티켓 존재 여부 확인
+     * 4. 요청한 티켓 타입이 실제 티켓 타입과 일치하는지 확인
+     * 5. 놀이기구 예약 가능 여부 확인
+     * 6. 대기열 서버로 등록 요청
+     * 7. RideUsage 테이블에 WAITING 상태로 기록
+     *
+     * @param authenticatedUserId 인증된 사용자 ID
+     * @param userId 요청 사용자 ID
+     * @param rideId 놀이기구 ID
+     * @param ticketType 티켓 타입 (GENERAL 또는 PREMIUM)
+     * @return 대기열 등록 응답
+     * @throws IllegalArgumentException 검증 실패 시
+     * @throws RuntimeException 대기열 서버 통신 오류 시
+     */
+    public EnqueueResponse enqueueWithValidation(
+            Long authenticatedUserId,
+            Long userId,
+            Long rideId,
+            String ticketType) {
+
+        logger.info("대기열 등록 검증 시작 - 인증된사용자={}, 요청사용자={}, 놀이기구={}, 요청티켓타입={}",
+                authenticatedUserId, userId, rideId, ticketType);
+
+        // 1. 인증된 사용자 ID와 요청의 userId가 일치하는지 확인 (보안)
+        if (!authenticatedUserId.equals(userId)) {
+            logger.warn("인증된 사용자와 요청 사용자 불일치 - 인증={}, 요청={}", authenticatedUserId, userId);
+            throw new IllegalArgumentException("본인의 대기열만 등록할 수 있습니다.");
+        }
+
+        // 2. 사용자의 오늘 날짜 활성 티켓 찾기 (ACTIVE 상태 + available_at이 오늘인 티켓)
+        TicketOrder ticketOrder = ticketOrderService.getTodayActiveTicket(userId)
+                .orElseThrow(() -> {
+                    logger.warn("오늘 날짜 활성 티켓이 없음 - userId={}", userId);
+                    return new IllegalArgumentException("오늘 날짜에 사용 가능한 티켓이 없습니다. 티켓을 먼저 구매해주세요.");
+                });
+
+        Long ticketOrderId = ticketOrder.getTicketOrderId();
+        Long ticketManagementId = ticketOrder.getTicketManagementId();
+
+        logger.info("오늘 날짜 활성 티켓 찾음 - ticketOrderId={}, ticketManagementId={}, userId={}, activeStatus={}",
+                ticketOrderId, ticketManagementId, userId, ticketOrder.getActiveStatus());
+
+        // 3. 티켓의 실제 타입 조회
+        com.authserver.entity.TicketType actualTicketType = ticketOrderService.getTicketType(ticketOrder);
+
+        logger.info("티켓 타입 확인 - 실제티켓타입={}, 요청티켓타입={}", actualTicketType, ticketType);
+
+        // 4. 요청한 티켓 타입이 실제 티켓 타입과 일치하는지 확인
+        if (!actualTicketType.name().equals(ticketType)) {
+            logger.warn("티켓 타입 불일치 - 실제={}, 요청={}", actualTicketType, ticketType);
+            throw new IllegalArgumentException(
+                    String.format("보유한 티켓 타입(%s)과 요청한 티켓 타입(%s)이 일치하지 않습니다.",
+                            actualTicketType.name(), ticketType));
+        }
+
+        // 5. 해당 티켓으로 해당 놀이기구를 예약할 수 있는지 확인
+        if (!rideUsageService.canEnqueue(ticketOrderId, rideId)) {
+            logger.warn("예약 불가 - 이미 이용했거나 대기 중 - ticketOrderId={}, rideId={}",
+                    ticketOrderId, rideId);
+            throw new IllegalArgumentException("이미 이용했거나 대기 중인 놀이기구입니다. 티켓 하나당 각 놀이기구는 1번만 예약 가능합니다.");
+        }
+
+        // 6. 대기열 서버로 등록 요청
+        EnqueueResponse response = enqueue(userId, rideId, ticketType, ticketOrderId);
+
+        // 7. RideUsage 테이블에 WAITING 상태로 기록 생성
+        rideUsageService.createRideUsage(userId, rideId, ticketOrderId);
+
+        logger.info("대기열 등록 성공 - 사용자={}, 놀이기구={}, 티켓주문ID={}, 티켓타입={}, 현재순번={}, 예상대기시간={}분",
+                userId, rideId, ticketOrderId, ticketType, response.position(), response.estimatedWaitMinutes());
+
+        return response;
+    }
+
+    /**
+     * 대기열 등록 요청을 대기열 서버로 전달 (내부 메서드)
+     *
+     * Note: ticketOrderId는 메인 서버에서만 사용하고 대기열 서버로는 전달하지 않음
      *
      * @param userId 사용자 ID
      * @param rideId 놀이기구 ID
      * @param ticketType 티켓 타입
+     * @param ticketOrderId 티켓 주문 ID (대기열 서버로는 미전송, 로깅용)
      * @return 대기열 등록 응답
      */
-    public EnqueueResponse enqueue(Long userId, Long rideId, String ticketType) {
-        logger.info("대기열 서버로 등록 요청 전송 - 사용자={}, 놀이기구={}, 티켓타입={}", userId, rideId, ticketType);
+    private EnqueueResponse enqueue(Long userId, Long rideId, String ticketType, Long ticketOrderId) {
+        logger.info("대기열 서버로 등록 요청 전송 - 사용자={}, 놀이기구={}, 티켓타입={}, 티켓주문ID={}",
+                userId, rideId, ticketType, ticketOrderId);
 
+        // 대기열 서버로는 ticketOrderId를 보내지 않음 (대기열 서버는 ticketOrderId를 관리하지 않음)
         EnqueueRequest request = new EnqueueRequest(userId, rideId, ticketType);
 
         try {
@@ -61,12 +149,33 @@ public class QueueClientService {
     }
 
     /**
-     * 사용자의 모든 대기열 상태 조회
+     * 사용자의 모든 대기열 상태 조회 (인증 포함)
+     *
+     * @param authenticatedUserId 인증된 사용자 ID
+     * @param userId 요청 사용자 ID
+     * @return 대기열 상태 리스트
+     * @throws IllegalArgumentException 인증 실패 시
+     * @throws RuntimeException 대기열 서버 통신 오류 시
+     */
+    public QueueStatusListResponse getAllStatusWithValidation(Long authenticatedUserId, Long userId) {
+        logger.info("대기열 상태 조회 검증 시작 - 인증된사용자={}, 요청사용자={}", authenticatedUserId, userId);
+
+        // 인증된 사용자 ID와 요청의 userId가 일치하는지 확인 (보안)
+        if (!authenticatedUserId.equals(userId)) {
+            logger.warn("인증된 사용자와 요청 사용자 불일치 - 인증={}, 요청={}", authenticatedUserId, userId);
+            throw new IllegalArgumentException("본인의 대기열 상태만 조회할 수 있습니다.");
+        }
+
+        return getAllStatus(userId);
+    }
+
+    /**
+     * 사용자의 모든 대기열 상태 조회 (내부 메서드)
      *
      * @param userId 사용자 ID
      * @return 대기열 상태 리스트
      */
-    public QueueStatusListResponse getAllStatus(Long userId) {
+    private QueueStatusListResponse getAllStatus(Long userId) {
         logger.info("대기열 서버로 전체 상태 조회 요청 - 사용자={}", userId);
 
         try {
@@ -150,6 +259,34 @@ public class QueueClientService {
             logger.error("특정 놀이기구 대기열 정보 조회 중 오류 발생 - 놀이기구={}", rideId, e);
             throw new RuntimeException("대기열 서버 통신 오류: " + e.getMessage(), e);
         }
+    }
+
+    /**
+     * 놀이기구 이용 완료 처리 (검증 포함)
+     *
+     * 비즈니스 로직:
+     * 1. 인증된 사용자 ID와 요청의 userId가 일치하는지 확인 (보안)
+     * 2. RideUsageService를 통해 WAITED → COMPLETED 상태 변경
+     *
+     * @param authenticatedUserId 인증된 사용자 ID
+     * @param userId 요청 사용자 ID
+     * @param rideId 놀이기구 ID
+     * @throws IllegalArgumentException 인증 실패 또는 대기 중인 예약이 없는 경우
+     */
+    public void completeRideWithValidation(Long authenticatedUserId, Long userId, Long rideId) {
+        logger.info("놀이기구 이용 완료 검증 시작 - 인증된사용자={}, 요청사용자={}, 놀이기구={}",
+                authenticatedUserId, userId, rideId);
+
+        // 1. 인증된 사용자 ID와 요청의 userId가 일치하는지 확인 (보안)
+        if (!authenticatedUserId.equals(userId)) {
+            logger.warn("인증된 사용자와 요청 사용자 불일치 - 인증={}, 요청={}", authenticatedUserId, userId);
+            throw new IllegalArgumentException("본인의 예약만 완료 처리할 수 있습니다.");
+        }
+
+        // 2. WAITED -> COMPLETED 상태 변경
+        rideUsageService.completeRideByUserAndRide(userId, rideId);
+
+        logger.info("놀이기구 이용 완료 처리 성공 - userId={}, rideId={}", userId, rideId);
     }
 }
 

@@ -138,30 +138,6 @@ public class RideUsageController {
     }
 
     /**
-     * PATCH /api/ride-usages/{rideUsageId}/arrived - 입장 가능 알림 시각 기록
-     */
-    @Operation(summary = "입장 가능 알림", description = "입장 가능 알림 시각을 기록합니다.")
-    @ApiResponses(value = {
-            @ApiResponse(responseCode = "200", description = "처리 성공"),
-            @ApiResponse(responseCode = "404", description = "이용 기록을 찾을 수 없음"),
-            @ApiResponse(responseCode = "500", description = "서버 오류")
-    })
-    @PatchMapping("/{rideUsageId}/arrived")
-    public ResponseEntity<RideUsage> setArrivedAt(
-            @Parameter(description = "이용 기록 ID", required = true)
-            @PathVariable Long rideUsageId) {
-        try {
-            RideUsage rideUsage = rideUsageService.setArrivedAt(rideUsageId);
-            return ResponseEntity.ok(rideUsage);
-        } catch (IllegalArgumentException e) {
-            return ResponseEntity.notFound().build();
-        } catch (Exception e) {
-            e.printStackTrace();
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
-        }
-    }
-
-    /**
      * PATCH /api/ride-usages/{rideUsageId}/complete - 이용 완료 처리
      */
     @Operation(summary = "이용 완료 처리", description = "놀이기구 이용을 완료 처리합니다.")

@@ -38,9 +38,6 @@ public class RideUsage {
     @Column(name = "status", nullable = false)
     private RideUsageStatus status;
 
-    @Column(name = "arrived_at")
-    private LocalDateTime arrivedAt;
-
     @Column(name = "completed_at")
     private LocalDateTime completedAt;
 

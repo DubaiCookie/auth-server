@@ -9,13 +9,10 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-import com.authserver.dto.TicketOrderResponseDto;
 import com.authserver.entity.TicketOrder;
 import com.authserver.entity.ActiveStatus;
-import com.authserver.entity.TicketType;
 import com.authserver.service.TicketOrderService;
 
-import java.time.LocalDateTime;
 import java.util.List;
 
 @RestController
@@ -29,7 +26,7 @@ public class TicketController {
     /**
      * POST /api/tickets - 티켓 주문 생성
      */
-    @Operation(summary = "티켓 주문", description = "이용 날짜와 티켓 타입으로 새로운 티켓을 주문합니다.")
+    @Operation(summary = "티켓 주문", description = "새로운 티켓을 주문합니다.")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "201", description = "생성 성공"),
             @ApiResponse(responseCode = "400", description = "잘못된 요청"),
@@ -39,18 +36,12 @@ public class TicketController {
     @PostMapping
     public ResponseEntity<TicketOrder> createTicketOrder(
             jakarta.servlet.http.HttpServletRequest request,
-            @Parameter(description = "이용 날짜 (ISO 8601)", required = true, example = "2026-02-20T10:00:00")
-            @RequestParam String availableAt,
-            @Parameter(description = "티켓 타입 (GENERAL 또는 PREMIUM)", required = true, example = "GENERAL")
-            @RequestParam TicketType ticketType) {
+            @Parameter(description = "티켓 관리 ID", required = true, example = "1")
+            @RequestParam Long ticketManagementId) {
         try {
             Long authenticatedUserId = (Long) request.getAttribute("authenticatedUserId");
-            LocalDateTime availableAtDateTime = LocalDateTime.parse(availableAt);
-            TicketOrder ticketOrder = ticketOrderService.createTicketOrderByDateAndType(
-                authenticatedUserId, availableAtDateTime, ticketType);
+            TicketOrder ticketOrder = ticketOrderService.createTicketOrder(authenticatedUserId, ticketManagementId);
             return ResponseEntity.status(HttpStatus.CREATED).body(ticketOrder);
-        } catch (IllegalArgumentException e) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
         } catch (Exception e) {
             e.printStackTrace();
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
@@ -58,19 +49,43 @@ public class TicketController {
     }
 
     /**
-     * GET /api/tickets/my - 내 오늘 이후 티켓 주문 조회
+     * GET /api/tickets/{ticketOrderId} - 특정 티켓 주문 조회
      */
-    @Operation(summary = "내 오늘 이후 티켓 주문 조회", description = "인증된 사용자의 오늘 포함 이후 티켓 주문을 조회합니다.")
+    @Operation(summary = "티켓 주문 조회", description = "ID로 특정 티켓 주문을 조회합니다.")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "조회 성공"),
+            @ApiResponse(responseCode = "404", description = "티켓 주문을 찾을 수 없음"),
+            @ApiResponse(responseCode = "500", description = "서버 오류")
+    })
+    @GetMapping("/{ticketOrderId}")
+    public ResponseEntity<TicketOrder> getTicketOrder(
+            @Parameter(description = "티켓 주문 ID", required = true)
+            @PathVariable Long ticketOrderId) {
+        try {
+            TicketOrder ticketOrder = ticketOrderService.getTicketOrder(ticketOrderId);
+            return ResponseEntity.ok(ticketOrder);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.notFound().build();
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+
+    /**
+     * GET /api/tickets/my - 내 티켓 주문 조회
+     */
+    @Operation(summary = "내 티켓 주문 조회", description = "인증된 사용자의 모든 티켓 주문을 조회합니다.")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "조회 성공"),
             @ApiResponse(responseCode = "401", description = "인증 필요"),
             @ApiResponse(responseCode = "500", description = "서버 오류")
     })
     @GetMapping("/my")
-    public ResponseEntity<List<TicketOrderResponseDto>> getMyTicketOrders(jakarta.servlet.http.HttpServletRequest request) {
+    public ResponseEntity<List<TicketOrder>> getMyTicketOrders(jakarta.servlet.http.HttpServletRequest request) {
         try {
             Long authenticatedUserId = (Long) request.getAttribute("authenticatedUserId");
-            List<TicketOrderResponseDto> ticketOrders = ticketOrderService.getUserTicketOrdersDto(authenticatedUserId);
+            List<TicketOrder> ticketOrders = ticketOrderService.getUserTicketOrders(authenticatedUserId);
             return ResponseEntity.ok(ticketOrders);
         } catch (Exception e) {
             e.printStackTrace();
@@ -81,17 +96,17 @@ public class TicketController {
     /**
      * GET /api/tickets/my/active - 내 활성 티켓 주문 조회
      */
-    @Operation(summary = "내 활성 티켓 주문 조회", description = "인증된 사용자의 오늘 포함 이후 활성 상태 티켓 주문만 조회합니다.")
+    @Operation(summary = "내 활성 티켓 주문 조회", description = "인증된 사용자의 활성 상태 티켓 주문만 조회합니다.")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "조회 성공"),
             @ApiResponse(responseCode = "401", description = "인증 필요"),
             @ApiResponse(responseCode = "500", description = "서버 오류")
     })
     @GetMapping("/my/active")
-    public ResponseEntity<List<TicketOrderResponseDto>> getMyActiveTicketOrders(jakarta.servlet.http.HttpServletRequest request) {
+    public ResponseEntity<List<TicketOrder>> getMyActiveTicketOrders(jakarta.servlet.http.HttpServletRequest request) {
         try {
             Long authenticatedUserId = (Long) request.getAttribute("authenticatedUserId");
-            List<TicketOrderResponseDto> ticketOrders = ticketOrderService.getUserActiveTicketOrdersDto(authenticatedUserId);
+            List<TicketOrder> ticketOrders = ticketOrderService.getUserActiveTicketOrders(authenticatedUserId);
             return ResponseEntity.ok(ticketOrders);
         } catch (Exception e) {
             e.printStackTrace();
