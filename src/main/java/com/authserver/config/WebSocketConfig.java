@@ -22,8 +22,7 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
     @Override
     public void registerStompEndpoints(StompEndpointRegistry registry) {
         registry.addEndpoint("/ws/queue")
-                .setAllowedOriginPatterns("*")
-                .withSockJS(); // SockJS 폴백 지원 (WebSocket 연결 실패 시 HTTP 폴링 사용)
+                .setAllowedOriginPatterns("*");
     }
 }
 
