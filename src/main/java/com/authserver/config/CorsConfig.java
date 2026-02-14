@@ -13,6 +13,9 @@ public class CorsConfig {
     @Value("${cors.server-origin}")
     private String serverOrigin;
 
+    @Value("${cors.server-origin-swagger}")
+    private String serverOriginSwagger;
+
     @Bean
     public CorsFilter corsFilter() {
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
@@ -24,6 +27,7 @@ public class CorsConfig {
         config.addAllowedOrigin("http://localhost:8080"); // 로컬 백엔드
         config.addAllowedOrigin("http://localhost:3001"); // 로컬 프론트엔드
         config.addAllowedOrigin(serverOrigin);
+        config.addAllowedOrigin(serverOriginSwagger);
 
         config.addAllowedHeader("*"); // 모든 헤더 허용
         config.addAllowedMethod("*"); // 모든 HTTP 메서드 허용 (GET, POST, PUT, DELETE 등)
