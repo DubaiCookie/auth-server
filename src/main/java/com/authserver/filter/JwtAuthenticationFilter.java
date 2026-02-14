@@ -39,6 +39,12 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             return true;
         }
 
+        // ⭐ 2. Swagger 관련 경로 인증 제외
+        if (path.startsWith("/swagger-ui") ||
+                path.startsWith("/v3/api-docs")) {
+            return true;
+        }
+
         // GET 메소드인 경우 필터 건너뛰기
         if ("GET".equalsIgnoreCase(method)) {
             return path.startsWith("/api/rides") || path.startsWith("/api/tickets/products");

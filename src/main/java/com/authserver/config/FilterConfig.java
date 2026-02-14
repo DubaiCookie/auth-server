@@ -37,7 +37,7 @@ public class FilterConfig {
         registrationBean.addUrlPatterns("/home");
 
         // 필터 순서 설정 (낮을수록 먼저 실행)
-        registrationBean.setOrder(1);
+        registrationBean.setOrder(2);
 
         return registrationBean;
     }
