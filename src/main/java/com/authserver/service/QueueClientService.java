@@ -1,10 +1,13 @@
 package com.authserver.service;
 
+import com.authserver.dto.queue.CancelResponse;
 import com.authserver.dto.queue.EnqueueRequest;
 import com.authserver.dto.queue.EnqueueResponse;
 import com.authserver.dto.queue.QueueStatusListResponse;
 import com.authserver.dto.queue.RideQueueInfoListResponse;
+import com.authserver.entity.Ride;
 import com.authserver.entity.TicketOrder;
+import com.authserver.repository.RideRepository;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -26,6 +29,7 @@ public class QueueClientService {
     private final WebClient queueWebClient;
     private final TicketOrderService ticketOrderService;
     private final RideUsageService rideUsageService;
+    private final RideRepository rideRepository;
 
     /**
      * 대기열 등록 요청을 검증하고 대기열 서버로 전달
@@ -195,11 +199,51 @@ public class QueueClientService {
 
             logger.info("대기열 서버 응답 - 항목수={}", response.items().size());
 
+            // rideName이 null인 경우 rideId로 조회하여 채워넣기
+            if (response.items() != null && !response.items().isEmpty()) {
+                java.util.List<com.authserver.dto.queue.QueueStatusItem> updatedItems =
+                        response.items().stream()
+                                .map(item -> {
+                                    String rideName = item.rideName();
+                                    if (rideName == null || rideName.isEmpty()) {
+                                        try {
+                                            Ride ride = rideRepository.findById(item.rideId())
+                                                    .orElseThrow(() -> new IllegalArgumentException("놀이기구를 찾을 수 없습니다."));
+                                            rideName = ride.getName();
+                                            logger.debug("놀이기구 이름 조회 완료 - rideId={}, rideName={}", item.rideId(), rideName);
+                                        } catch (Exception e) {
+                                            logger.warn("놀이기구 이름 조회 실패 - rideId={}", item.rideId(), e);
+                                            rideName = "Unknown";
+                                        }
+                                    }
+                                    return new com.authserver.dto.queue.QueueStatusItem(
+                                            item.rideId(),
+                                            rideName,
+                                            item.ticketType(),
+                                            item.position(),
+                                            item.estimatedWaitMinutes()
+                                    );
+                                })
+                                .collect(java.util.stream.Collectors.toList());
+
+                return new QueueStatusListResponse(updatedItems);
+            }
+
             return response;
         } catch (Exception e) {
             logger.error("대기열 상태 조회 중 오류 발생", e);
             throw new RuntimeException("대기열 서버 통신 오류: " + e.getMessage(), e);
         }
+    }
+
+    /**
+     * 사용자의 모든 대기열 상태 조회 (WebSocket용 공개 메서드)
+     *
+     * @param userId 사용자 ID
+     * @return 대기열 상태 리스트
+     */
+    public QueueStatusListResponse getUserQueueStatus(Long userId) {
+        return getAllStatus(userId);
     }
 
     /**
@@ -287,6 +331,102 @@ public class QueueClientService {
         rideUsageService.completeRideByUserAndRide(userId, rideId);
 
         logger.info("놀이기구 이용 완료 처리 성공 - userId={}, rideId={}", userId, rideId);
+    }
+
+    /**
+     * 대기열 취소 처리 (검증 포함)
+     *
+     * 비즈니스 로직:
+     * 1. 인증된 사용자 ID와 요청의 userId가 일치하는지 확인 (보안)
+     * 2. 사용자의 오늘 날짜 활성 티켓 찾기
+     * 3. 티켓의 실제 타입 조회
+     * 4. userId와 rideId로 WAITED 상태의 RideUsage가 존재하는지 확인
+     * 5. 존재하면 대기열 서버로 취소 요청 전송 (티켓 타입 포함)
+     * 6. 대기열 서버 응답 성공 시 RideUsage 삭제
+     *
+     * @param authenticatedUserId 인증된 사용자 ID
+     * @param userId 요청 사용자 ID
+     * @param rideId 놀이기구 ID
+     * @return 대기열 취소 응답
+     * @throws IllegalArgumentException 인증 실패 또는 대기 중인 예약이 없는 경우
+     * @throws RuntimeException 대기열 서버 통신 오류 시
+     */
+    public CancelResponse cancelWithValidation(Long authenticatedUserId, Long userId, Long rideId) {
+        logger.info("대기열 취소 검증 시작 - 인증된사용자={}, 요청사용자={}, 놀이기구={}",
+                authenticatedUserId, userId, rideId);
+
+        // 1. 인증된 사용자 ID와 요청의 userId가 일치하는지 확인 (보안)
+        if (!authenticatedUserId.equals(userId)) {
+            logger.warn("인증된 사용자와 요청 사용자 불일치 - 인증={}, 요청={}", authenticatedUserId, userId);
+            throw new IllegalArgumentException("본인의 예약만 취소할 수 있습니다.");
+        }
+
+        // 2. 사용자의 오늘 날짜 활성 티켓 찾기
+        TicketOrder ticketOrder = ticketOrderService.getTodayActiveTicket(userId)
+                .orElseThrow(() -> {
+                    logger.warn("오늘 날짜 활성 티켓이 없음 - userId={}", userId);
+                    return new IllegalArgumentException("오늘 날짜에 사용 가능한 티켓이 없습니다.");
+                });
+
+        // 3. 티켓의 실제 타입 조회
+        com.authserver.entity.TicketType actualTicketType = ticketOrderService.getTicketType(ticketOrder);
+        String ticketType = actualTicketType.name();
+        logger.info("사용자 티켓 타입 조회 완료 - userId={}, ticketType={}", userId, ticketType);
+
+        // 4. userId와 rideId로 WAITED 상태의 RideUsage가 존재하는지 확인
+        boolean hasWaitedReservation = rideUsageService.hasWaitedReservation(userId, rideId);
+        if (!hasWaitedReservation) {
+            logger.warn("대기 중인 예약이 없음 - userId={}, rideId={}", userId, rideId);
+            throw new IllegalArgumentException("취소할 대기 중인 예약이 없습니다.");
+        }
+
+        // 5. 대기열 서버로 취소 요청 전송 (티켓 타입 포함)
+        CancelResponse cancelResponse = cancelQueueInServer(userId, rideId, ticketType);
+
+        // 6. 대기열 서버 응답 성공 시 RideUsage 삭제
+        if (cancelResponse.success()) {
+            rideUsageService.deleteWaitedReservation(userId, rideId);
+            logger.info("대기열 취소 처리 완료 - userId={}, rideId={}, ticketType={}", userId, rideId, ticketType);
+        } else {
+            logger.warn("대기열 서버 취소 실패 - userId={}, rideId={}, ticketType={}, message={}",
+                    userId, rideId, ticketType, cancelResponse.message());
+            throw new RuntimeException("대기열 취소에 실패했습니다: " + cancelResponse.message());
+        }
+
+        return cancelResponse;
+    }
+
+    /**
+     * 대기열 서버로 취소 요청 전송 (내부 메서드)
+     *
+     * @param userId 사용자 ID
+     * @param rideId 놀이기구 ID
+     * @param ticketType 티켓 타입
+     * @return 취소 응답
+     */
+    private CancelResponse cancelQueueInServer(Long userId, Long rideId, String ticketType) {
+        logger.info("대기열 서버로 취소 요청 전송 - 사용자={}, 놀이기구={}, 티켓타입={}", userId, rideId, ticketType);
+
+        try {
+            // 대기열 서버는 EnqueueRequest 형식으로 받음
+            EnqueueRequest cancelRequest = new EnqueueRequest(userId, rideId, ticketType);
+
+            // 대기열 서버는 void를 반환하므로, 성공 시 우리가 CancelResponse를 생성
+            queueWebClient.post()
+                    .uri("/api/queue/cancel")
+                    .bodyValue(cancelRequest)
+                    .retrieve()
+                    .bodyToMono(Void.class)
+                    .timeout(Duration.ofSeconds(TIMEOUT_SECONDS))
+                    .block();
+
+            logger.info("대기열 서버 취소 완료 - 사용자={}, 놀이기구={}, 티켓타입={}", userId, rideId, ticketType);
+
+            return new CancelResponse(true, "예약이 취소되었습니다.", userId, rideId);
+        } catch (Exception e) {
+            logger.error("대기열 서버 취소 요청 중 오류 발생", e);
+            throw new RuntimeException("대기열 서버 통신 오류: " + e.getMessage(), e);
+        }
     }
 }
 

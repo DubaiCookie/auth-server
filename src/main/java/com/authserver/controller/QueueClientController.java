@@ -1,5 +1,7 @@
 package com.authserver.controller;
 
+import com.authserver.dto.queue.CancelRequest;
+import com.authserver.dto.queue.CancelResponse;
 import com.authserver.dto.queue.CompleteRideRequest;
 import com.authserver.dto.queue.CompleteRideResponse;
 import com.authserver.dto.queue.EnqueueRequest;
@@ -29,8 +31,8 @@ import org.springframework.web.bind.annotation.*;
 @RequestMapping("/queue")
 @RequiredArgsConstructor
 @Tag(
-        name = "클라이언트 대기열 API",
-        description = "클라이언트의 대기열 요청을 대기열 서버로 중계하는 API"
+        name = "놀이기구 예약 API",
+        description = "놀이기구 예약 요청을 대기열 서버로 중계하는 API"
 )
 public class QueueClientController {
 
@@ -210,6 +212,63 @@ public class QueueClientController {
             logger.error("놀이기구 이용 완료 처리 중 오류 발생", e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body("놀이기구 이용 완료 처리 중 오류가 발생했습니다: " + e.getMessage());
+        }
+    }
+
+    /**
+     * 대기열 예약 취소 처리
+     * 사용자가 대기 중인 놀이기구 예약을 취소할 때 호출되는 API
+     * WAITED 상태의 예약을 삭제하고 대기열 서버에도 취소 요청
+     */
+    @Operation(
+            summary = "대기열 예약 취소",
+            description = "사용자가 대기 중인 놀이기구 예약을 취소합니다. ride_usage 테이블의 WAITED 상태 레코드를 삭제하고 대기열 서버에 취소 요청을 전송합니다."
+    )
+    @ApiResponses({
+            @ApiResponse(
+                    responseCode = "200",
+                    description = "취소 처리 성공",
+                    content = @Content(
+                            mediaType = "application/json",
+                            schema = @Schema(implementation = CancelResponse.class)
+                    )
+            ),
+            @ApiResponse(
+                    responseCode = "400",
+                    description = "잘못된 요청 (취소할 대기 중인 예약이 없음)"
+            ),
+            @ApiResponse(
+                    responseCode = "403",
+                    description = "권한 없음 (본인의 예약만 취소 가능)"
+            ),
+            @ApiResponse(
+                    responseCode = "500",
+                    description = "서버 내부 오류 또는 대기열 서버 통신 오류"
+            )
+    })
+    @PostMapping("/cancel")
+    public ResponseEntity<?> cancelQueue(
+            jakarta.servlet.http.HttpServletRequest request,
+            @RequestBody @Valid CancelRequest cancelRequest) {
+        Long authenticatedUserId = (Long) request.getAttribute("authenticatedUserId");
+        logger.info("대기열 취소 요청 - 인증된사용자={}, 요청사용자={}, 놀이기구={}",
+                authenticatedUserId, cancelRequest.userId(), cancelRequest.rideId());
+
+        try {
+            CancelResponse response = queueClientService.cancelWithValidation(
+                    authenticatedUserId,
+                    cancelRequest.userId(),
+                    cancelRequest.rideId()
+            );
+
+            return ResponseEntity.ok(response);
+        } catch (IllegalArgumentException e) {
+            logger.warn("대기열 취소 처리 실패: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
+        } catch (Exception e) {
+            logger.error("대기열 취소 처리 중 오류 발생", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body("대기열 취소 처리 중 오류가 발생했습니다: " + e.getMessage());
         }
     }
 }

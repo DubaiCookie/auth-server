@@ -55,20 +55,19 @@ public class QueueEventConsumerService {
 
     /**
      * 특정 사용자에게 웹소켓 메시지 전송
+     * Kafka 이벤트 (READY/ALMOST_READY)를 사용자별 대기열 상태 채널로 전송
      *
      * @param userId 사용자 ID
      * @param message 전송할 메시지
      */
     private void sendToUser(Long userId, QueueEventMessage message) {
-        // /user/{userId}/queue/events 경로로 메시지 전송
-        String destination = "/queue/events";
-        messagingTemplate.convertAndSendToUser(
-                userId.toString(),
-                destination,
-                message
-        );
+        // 사용자별 대기열 상태와 동일한 채널로 전송
+        // /sub/user/{userId}/queue-status
+        String destination = "/sub/user/" + userId + "/queue-status";
+        messagingTemplate.convertAndSend(destination, message);
 
-        logger.debug("웹소켓 전송 - destination=/user/{}/queue/events, message={}", userId, message);
+        logger.info("웹소켓 탑승 알림 전송 - destination={}, rideId={}, status={}",
+                destination, message.rideId(), message.status());
     }
 }
 

@@ -169,4 +169,41 @@ public class RideUsageService {
     public void deleteRideUsage(Long rideUsageId) {
         rideUsageRepository.deleteById(rideUsageId);
     }
+
+    /**
+     * 대기 중인 예약이 존재하는지 확인
+     *
+     * @param userId 사용자 ID
+     * @param rideId 놀이기구 ID
+     * @return WAITED 상태인 예약이 존재하면 true, 아니면 false
+     */
+    @Transactional(readOnly = true)
+    public boolean hasWaitedReservation(Long userId, Long rideId) {
+        Optional<RideUsage> waitedUsage = rideUsageRepository.findByUserIdAndRideIdAndStatus(
+                userId, rideId, RideUsageStatus.WAITED);
+        return waitedUsage.isPresent();
+    }
+
+    /**
+     * 대기 중인 예약 삭제 (취소 시 사용)
+     *
+     * @param userId 사용자 ID
+     * @param rideId 놀이기구 ID
+     * @throws IllegalArgumentException WAITED 상태의 레코드가 없는 경우
+     */
+    @Transactional
+    public void deleteWaitedReservation(Long userId, Long rideId) {
+        logger.info("대기 중인 예약 삭제 시작 - userId={}, rideId={}", userId, rideId);
+
+        Optional<RideUsage> waitedUsage = rideUsageRepository.findByUserIdAndRideIdAndStatus(
+                userId, rideId, RideUsageStatus.WAITED);
+
+        if (waitedUsage.isEmpty()) {
+            logger.warn("삭제할 대기 중인 예약이 없음 - userId={}, rideId={}", userId, rideId);
+            throw new IllegalArgumentException("삭제할 대기 중인 예약이 없습니다.");
+        }
+
+        rideUsageRepository.delete(waitedUsage.get());
+        logger.info("대기 중인 예약 삭제 완료 - userId={}, rideId={}", userId, rideId);
+    }
 }

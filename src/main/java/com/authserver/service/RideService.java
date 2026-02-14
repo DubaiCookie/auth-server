@@ -1,8 +1,8 @@
 package com.authserver.service;
 
-import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import com.authserver.entity.Ride;
@@ -15,12 +15,16 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 @Service
-@RequiredArgsConstructor
 public class RideService {
 
     private static final Logger logger = LoggerFactory.getLogger(RideService.class);
     private final RideRepository rideRepository;
     private final QueueClientService queueClientService;
+
+    public RideService(RideRepository rideRepository, @Lazy QueueClientService queueClientService) {
+        this.rideRepository = rideRepository;
+        this.queueClientService = queueClientService;
+    }
 
     /**
      * 놀이기구 생성

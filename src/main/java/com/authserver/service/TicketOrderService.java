@@ -3,6 +3,7 @@ package com.authserver.service;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import com.authserver.dto.TicketOrderResponseDto;
 import com.authserver.entity.TicketOrder;
 import com.authserver.entity.ActiveStatus;
 import com.authserver.entity.TicketManagement;
@@ -17,6 +18,7 @@ import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 /**
  * 티켓 주문 내역 관리 Service
@@ -139,5 +141,47 @@ public class TicketOrderService {
                 .orElseThrow(() -> new IllegalArgumentException("티켓 정보를 찾을 수 없습니다."));
 
         return ticket.getTicketType();
+    }
+
+    /**
+     * TicketOrder를 TicketOrderResponseDto로 변환
+     *
+     * @param ticketOrder 티켓 주문 엔티티
+     * @return 티켓 주문 응답 DTO
+     */
+    @Transactional(readOnly = true)
+    public TicketOrderResponseDto convertToDto(TicketOrder ticketOrder) {
+        // TicketManagement 조회
+        TicketManagement ticketManagement = ticketManagementRepository
+                .findById(ticketOrder.getTicketManagementId())
+                .orElseThrow(() -> new IllegalArgumentException("티켓 관리 정보를 찾을 수 없습니다."));
+
+        // Ticket 조회
+        Ticket ticket = ticketRepository
+                .findById(ticketManagement.getTicketId())
+                .orElseThrow(() -> new IllegalArgumentException("티켓 정보를 찾을 수 없습니다."));
+
+        return TicketOrderResponseDto.builder()
+                .ticketOrderId(ticketOrder.getTicketOrderId())
+                .userId(ticketOrder.getUserId())
+                .availableAt(ticketManagement.getAvailableAt())
+                .ticketType(ticket.getTicketType())
+                .paymentDate(ticketOrder.getPaymentDate())
+                .activeStatus(ticketOrder.getActiveStatus())
+                .build();
+    }
+
+    /**
+     * 사용자의 모든 티켓 주문을 DTO로 변환하여 조회
+     *
+     * @param userId 사용자 ID
+     * @return 티켓 주문 응답 DTO 리스트
+     */
+    @Transactional(readOnly = true)
+    public List<TicketOrderResponseDto> getUserTicketOrdersAsDto(Long userId) {
+        List<TicketOrder> ticketOrders = ticketOrderRepository.findByUserId(userId);
+        return ticketOrders.stream()
+                .map(this::convertToDto)
+                .collect(Collectors.toList());
     }
 }

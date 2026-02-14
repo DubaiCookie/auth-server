@@ -1,5 +1,6 @@
 package com.authserver.controller;
 
+import com.authserver.dto.TicketOrderResponseDto;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -75,17 +76,17 @@ public class TicketController {
     /**
      * GET /api/tickets/my - 내 티켓 주문 조회
      */
-    @Operation(summary = "내 티켓 주문 조회", description = "인증된 사용자의 모든 티켓 주문을 조회합니다.")
+    @Operation(summary = "내 티켓 주문 조회", description = "인증된 사용자의 모든 티켓 주문을 조회합니다. ticketType과 사용 날짜(availableAt)를 포함하여 반환합니다.")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "조회 성공"),
             @ApiResponse(responseCode = "401", description = "인증 필요"),
             @ApiResponse(responseCode = "500", description = "서버 오류")
     })
     @GetMapping("/my")
-    public ResponseEntity<List<TicketOrder>> getMyTicketOrders(jakarta.servlet.http.HttpServletRequest request) {
+    public ResponseEntity<List<TicketOrderResponseDto>> getMyTicketOrders(jakarta.servlet.http.HttpServletRequest request) {
         try {
             Long authenticatedUserId = (Long) request.getAttribute("authenticatedUserId");
-            List<TicketOrder> ticketOrders = ticketOrderService.getUserTicketOrders(authenticatedUserId);
+            List<TicketOrderResponseDto> ticketOrders = ticketOrderService.getUserTicketOrdersAsDto(authenticatedUserId);
             return ResponseEntity.ok(ticketOrders);
         } catch (Exception e) {
             e.printStackTrace();
