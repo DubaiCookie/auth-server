@@ -34,6 +34,11 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         String path = request.getRequestURI();
         String method = request.getMethod();
 
+        // ⭐ Swagger preflight 허용 (핵심 한 줄)
+        if ("OPTIONS".equalsIgnoreCase(method)) {
+            return true;
+        }
+
         // GET 메소드인 경우 필터 건너뛰기
         if ("GET".equalsIgnoreCase(method)) {
             return path.startsWith("/api/rides") || path.startsWith("/api/tickets/products");
