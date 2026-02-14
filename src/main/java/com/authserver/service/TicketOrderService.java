@@ -173,15 +173,34 @@ public class TicketOrderService {
 
     /**
      * 사용자의 모든 티켓 주문을 DTO로 변환하여 조회
+     * 오늘 날짜(00:00:00) 이후의 티켓만 조회하고, availableAt 기준으로 날짜 빠른 순으로 정렬
      *
      * @param userId 사용자 ID
-     * @return 티켓 주문 응답 DTO 리스트
+     * @return 티켓 주문 응답 DTO 리스트 (오늘 날짜 이후, 날짜 오름차순)
      */
     @Transactional(readOnly = true)
     public List<TicketOrderResponseDto> getUserTicketOrdersAsDto(Long userId) {
         List<TicketOrder> ticketOrders = ticketOrderRepository.findByUserId(userId);
-        return ticketOrders.stream()
+
+        // 오늘 날짜의 시작 시간 (00:00:00)
+        LocalDateTime startOfToday = LocalDate.now().atStartOfDay();
+
+        java.util.logging.Logger.getLogger(this.getClass().getName())
+                .info(String.format("사용자 티켓 조회 - userId=%d, 총 티켓수=%d, 기준시간=%s",
+                      userId, ticketOrders.size(), startOfToday));
+
+        List<TicketOrderResponseDto> result = ticketOrders.stream()
                 .map(this::convertToDto)
+                .peek(dto -> java.util.logging.Logger.getLogger(this.getClass().getName())
+                        .info(String.format("티켓 변환 완료 - ticketOrderId=%d, availableAt=%s, ticketType=%s",
+                              dto.getTicketOrderId(), dto.getAvailableAt(), dto.getTicketType())))
+                .filter(dto -> !dto.getAvailableAt().isBefore(startOfToday)) // 오늘 00:00:00 이후 (오늘 포함)
+                .sorted((dto1, dto2) -> dto1.getAvailableAt().compareTo(dto2.getAvailableAt())) // 날짜 빠른 순 정렬
                 .collect(Collectors.toList());
+
+        java.util.logging.Logger.getLogger(this.getClass().getName())
+                .info(String.format("필터링 후 티켓수=%d", result.size()));
+
+        return result;
     }
 }

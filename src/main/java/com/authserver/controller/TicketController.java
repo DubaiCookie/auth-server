@@ -7,6 +7,8 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -22,6 +24,7 @@ import java.util.List;
 @Tag(name = "티켓 API", description = "티켓 주문 관리 관련 API")
 public class TicketController {
 
+    private static final Logger logger = LoggerFactory.getLogger(TicketController.class);
     private final TicketOrderService ticketOrderService;
 
     /**
@@ -86,10 +89,15 @@ public class TicketController {
     public ResponseEntity<List<TicketOrderResponseDto>> getMyTicketOrders(jakarta.servlet.http.HttpServletRequest request) {
         try {
             Long authenticatedUserId = (Long) request.getAttribute("authenticatedUserId");
+            logger.info("내 티켓 주문 조회 요청 - userId={}", authenticatedUserId);
+
             List<TicketOrderResponseDto> ticketOrders = ticketOrderService.getUserTicketOrdersAsDto(authenticatedUserId);
+
+            logger.info("내 티켓 주문 조회 완료 - userId={}, 조회된 티켓수={}", authenticatedUserId, ticketOrders.size());
+
             return ResponseEntity.ok(ticketOrders);
         } catch (Exception e) {
-            e.printStackTrace();
+            logger.error("내 티켓 주문 조회 중 오류 발생", e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
     }
