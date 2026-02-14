@@ -20,6 +20,7 @@ public class QueueEventConsumerService {
     private static final Logger logger = LoggerFactory.getLogger(QueueEventConsumerService.class);
 
     private final SimpMessagingTemplate messagingTemplate;
+    private final RideService rideService;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     /**
@@ -40,13 +41,22 @@ public class QueueEventConsumerService {
             String type = jsonNode.get("type").asText();
             String status = jsonNode.get("status").asText();
 
-            QueueEventMessage eventMessage = new QueueEventMessage(rideId, userId, type, status);
+            // rideId로 놀이기구 이름 조회
+            String rideName;
+            try {
+                rideName = rideService.getRide(rideId).getName();
+            } catch (Exception e) {
+                logger.warn("놀이기구 이름 조회 실패 - rideId={}", rideId, e);
+                rideName = "알 수 없음";
+            }
+
+            QueueEventMessage eventMessage = new QueueEventMessage(rideId, rideName, userId, type, status);
 
             // 특정 사용자에게만 메시지 전송
             sendToUser(userId, eventMessage);
 
-            logger.info("웹소켓 메시지 전송 완료 - 사용자={}, 놀이기구={}, 상태={}",
-                    userId, rideId, status);
+            logger.info("웹소켓 메시지 전송 완료 - 사용자={}, 놀이기구={} ({}), 상태={}",
+                    userId, rideName, rideId, status);
 
         } catch (Exception e) {
             logger.error("Kafka 메시지 처리 중 오류 발생: {}", message, e);
@@ -66,8 +76,8 @@ public class QueueEventConsumerService {
         String destination = "/sub/user/" + userId + "/queue-status";
         messagingTemplate.convertAndSend(destination, message);
 
-        logger.info("웹소켓 탑승 알림 전송 - destination={}, rideId={}, status={}",
-                destination, message.rideId(), message.status());
+        logger.info("웹소켓 탑승 알림 전송 - destination={}, rideName={}, rideId={}, status={}",
+                destination, message.rideName(), message.rideId(), message.status());
     }
 }
 

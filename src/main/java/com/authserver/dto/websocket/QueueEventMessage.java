@@ -5,6 +5,7 @@ package com.authserver.dto.websocket;
  */
 public record QueueEventMessage(
         Long rideId,
+        String rideName,    // 놀이기구 이름
         Long userId,
         String type,        // PREMIUM or GENERAL
         String status       // READY or ALMOST_READY
