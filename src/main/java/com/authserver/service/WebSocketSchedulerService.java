@@ -50,14 +50,15 @@ public class WebSocketSchedulerService {
             if (response != null && response.rides() != null) {
                 List<AllRidesMinutesEvent.RideMinutes> rides = response.rides().stream()
                         .map(ride -> {
-                            // waitTimes에서 최소 대기 시간 추출 (PREMIUM이 일반적으로 더 짧음)
-                            int minWaitMinutes = ride.waitTimes().stream()
+                            // waitTimes에서 GENERAL 티켓 타입의 대기 시간 추출
+                            int generalWaitMinutes = ride.waitTimes().stream()
+                                    .filter(wt -> "GENERAL".equalsIgnoreCase(wt.ticketType()))
                                     .mapToInt(wt -> wt.estimatedWaitMinutes())
-                                    .min()
+                                    .findFirst()
                                     .orElse(0);
                             return new AllRidesMinutesEvent.RideMinutes(
                                     ride.rideId(),
-                                    minWaitMinutes
+                                    generalWaitMinutes
                             );
                         })
                         .collect(Collectors.toList());
@@ -66,7 +67,7 @@ public class WebSocketSchedulerService {
 
                 messagingTemplate.convertAndSend("/sub/rides/minutes", event);
 
-                logger.info("전체 놀이기구 대기 시간 브로드캐스트 완료 - 놀이기구 수={}", rides.size());
+                logger.info("전체 놀이기구 대기 시간 브로드캐스트 완료 (GENERAL 기준) - 놀이기구 수={}", rides.size());
             }
         } catch (Exception e) {
             logger.error("전체 놀이기구 대기 시간 브로드캐스트 실패", e);
