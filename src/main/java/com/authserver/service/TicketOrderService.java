@@ -40,7 +40,7 @@ public class TicketOrderService {
         ticketOrder.setUserId(userId);
         ticketOrder.setTicketManagementId(ticketManagementId);
         ticketOrder.setPaymentDate(LocalDateTime.now());
-        ticketOrder.setActiveStatus(ActiveStatus.ACTIVE);
+        ticketOrder.setActiveStatus(ActiveStatus.DEACTIVE);
 
         return ticketOrderRepository.save(ticketOrder);
     }
