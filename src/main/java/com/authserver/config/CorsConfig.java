@@ -25,7 +25,11 @@ public class CorsConfig {
 
         // 허용할 도메인 지정
         config.addAllowedOrigin("http://localhost:8080"); // 로컬 백엔드
-        config.addAllowedOrigin("http://localhost:3001"); // 로컬 프론트엔드
+        config.addAllowedOrigin("http://localhost:3001"); // 로컬 React 프론트엔드
+        config.addAllowedOrigin("http://localhost:5173"); // 로컬 Vue 프론트엔드
+        config.addAllowedOrigin("http://127.0.0.1:8080"); // 로컬 백엔드 (IP)
+        config.addAllowedOrigin("http://127.0.0.1:3001"); // 로컬 React 프론트엔드 (IP)
+        config.addAllowedOrigin("http://127.0.0.1:5173"); // 로컬 Vue 프론트엔드 (IP)
         config.addAllowedOrigin("http://202.30.16.217"); // 배포 프론트엔드 (포트 없이)
         config.addAllowedOrigin(serverOrigin); // https://baeminjun.store
         config.addAllowedOrigin(serverOriginSwagger); // http://202.30.16.217:8080
