@@ -8,7 +8,7 @@ on:
 env:
   REGISTRY: amdp-registry.skala-ai.com
   PROJECT: skala26a-cloud
-  IMAGE_NAME: auth-server
+  IMAGE_NAME: main-server
 
 jobs:
   build-and-push:
