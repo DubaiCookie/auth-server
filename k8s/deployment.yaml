@@ -31,3 +31,9 @@ spec:
               value: "kafka.kafka:9092"
             - name: QUEUE_SERVER_URL
               value: "http://queue-server:8079"
+            - name: CORS_SERVER_ORIGIN
+              value: "https://baeminjun.store"
+            - name: CORS_SERVER_ORIGIN_SWAGGER
+              value: "http://202.30.16.217:8080"
+            - name: APP_SERVER_URL
+              value: "http://202.30.16.217:8080"
