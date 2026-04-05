@@ -20,20 +20,47 @@ spec:
             - containerPort: 8080
           env:
             - name: SPRING_DATASOURCE_URL
-              value: "jdbc:mariadb://202.30.16.217:3307/skala"
+              valueFrom:
+                secretKeyRef:
+                  name: auth-server-secret
+                  key: db-url
             - name: SPRING_DATASOURCE_USERNAME
-              value: "skala"
+              valueFrom:
+                secretKeyRef:
+                  name: auth-server-secret
+                  key: db-username
             - name: SPRING_DATASOURCE_PASSWORD
-              value: "skala"
+              valueFrom:
+                secretKeyRef:
+                  name: auth-server-secret
+                  key: db-password
             - name: JWT_SECRET
-              value: "RANDOM_SECRET_KEY"
+              valueFrom:
+                secretKeyRef:
+                  name: auth-server-secret
+                  key: jwt-secret
             - name: SPRING_KAFKA_BOOTSTRAP_SERVERS
-              value: "kafka.kafka:9092"
+              valueFrom:
+                secretKeyRef:
+                  name: auth-server-secret
+                  key: kafka-servers
             - name: QUEUE_SERVER_URL
-              value: "http://queue-server:8079"
+              valueFrom:
+                secretKeyRef:
+                  name: auth-server-secret
+                  key: queue-server-url
             - name: CORS_SERVER_ORIGIN
-              value: "https://baeminjun.store"
+              valueFrom:
+                secretKeyRef:
+                  name: auth-server-secret
+                  key: cors-server-origin
             - name: CORS_SERVER_ORIGIN_SWAGGER
-              value: "http://202.30.16.217:8080"
+              valueFrom:
+                secretKeyRef:
+                  name: auth-server-secret
+                  key: cors-server-origin-swagger
             - name: APP_SERVER_URL
-              value: "http://202.30.16.217:8080"
+              valueFrom:
+                secretKeyRef:
+                  name: auth-server-secret
+                  key: app-server-url
