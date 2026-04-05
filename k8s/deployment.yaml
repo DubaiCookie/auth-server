@@ -1,0 +1,33 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: auth-server
+  namespace: default
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: auth-server
+  template:
+    metadata:
+      labels:
+        app: auth-server
+    spec:
+      containers:
+        - name: auth-server
+          image: amdp-registry.skala-ai.com/skala26a-cloud/team3-main-server:latest
+          ports:
+            - containerPort: 8080
+          env:
+            - name: SPRING_DATASOURCE_URL
+              value: "jdbc:mariadb://202.30.16.217:3307/skala"
+            - name: SPRING_DATASOURCE_USERNAME
+              value: "skala"
+            - name: SPRING_DATASOURCE_PASSWORD
+              value: "skala"
+            - name: JWT_SECRET
+              value: "RANDOM_SECRET_KEY"
+            - name: SPRING_KAFKA_BOOTSTRAP_SERVERS
+              value: "kafka.kafka:9092"
+            - name: QUEUE_SERVER_URL
+              value: "http://queue-server:8079"
