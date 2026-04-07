@@ -64,3 +64,8 @@ spec:
                 secretKeyRef:
                   name: auth-server-secret
                   key: app-server-url
+            - name: SPRING_JPA_HIBERNATE_DDL_AUTO
+              valueFrom:
+                secretKeyRef:
+                  name: auth-server-secret
+                  key: ddl-auto

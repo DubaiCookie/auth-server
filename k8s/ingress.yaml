@@ -1,0 +1,103 @@
+
+# /api/* → auth-server (rewrite: /api/users → /users)
+# /swagger-ui/, /v3/api-docs → auth-server (직접 프록시)
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: backend-ingress
+  namespace: default
+  annotations:
+    nginx.ingress.kubernetes.io/use-regex: "true"
+    nginx.ingress.kubernetes.io/rewrite-target: /$2
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "3600"
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: a044d24f46bd84ded87846356effbae2-1952233309.ap-northeast-2.elb.amazonaws.com
+      http:
+        paths:
+          - path: /api(/|$)(.*)
+            pathType: ImplementationSpecific
+            backend:
+              service:
+                name: auth-server
+                port:
+                  number: 8080
+          - path: /swagger-ui(/|$)(.*)
+            pathType: ImplementationSpecific
+            backend:
+              service:
+                name: auth-server
+                port:
+                  number: 8080
+          - path: /v3/api-docs(/|$)(.*)
+            pathType: ImplementationSpecific
+            backend:
+              service:
+                name: auth-server
+                port:
+                  number: 8080
+          - path: /ws(/|$)(.*)
+            pathType: ImplementationSpecific
+            backend:
+              service:
+                name: auth-server
+                port:
+                  number: 8080
+---
+# /payments, /refunds, /index.html, /success.html, /fail.html → pay-server
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: pay-ingress
+  namespace: default
+  annotations:
+    nginx.ingress.kubernetes.io/use-regex: "true"
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: a044d24f46bd84ded87846356effbae2-1952233309.ap-northeast-2.elb.amazonaws.com
+      http:
+        paths:
+          - path: /payments
+            pathType: Prefix
+            backend:
+              service:
+                name: pay-server
+                port:
+                  number: 8078
+          - path: /refunds
+            pathType: Prefix
+            backend:
+              service:
+                name: pay-server
+                port:
+                  number: 8078
+          - path: /(index|success|fail)\.html$
+            pathType: ImplementationSpecific
+            backend:
+              service:
+                name: pay-server
+                port:
+                  number: 8078
+---
+# / → frontend
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: frontend
+  namespace: default
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: a044d24f46bd84ded87846356effbae2-1952233309.ap-northeast-2.elb.amazonaws.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: frontend
+                port:
+                  number: 80
